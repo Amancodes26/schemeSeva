@@ -1,14 +1,33 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import SchemeSearch from "../../../components/common/SchemeSearch/SchemeSearch";
-import { getFilteredSchemes } from "../../../services/schemes/schemeService";
-import { Search } from 'lucide-react';
+import { getFilteredSchemes, syncSchemes } from "../../../services/schemes/schemeService";
+import { Search, WifiOff } from 'lucide-react';
 
 const FindScheme = () => {
     const navigate = useNavigate();
     const [schemes, setSchemes] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [isOnline, setIsOnline] = useState(window.navigator.onLine);
+
+    useEffect(() => {
+        const handleOnline = () => setIsOnline(true);
+        const handleOffline = () => setIsOnline(false);
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        // Initial sync when component mounts and is online
+        if (isOnline) {
+            syncSchemes().catch(console.error);
+        }
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
 
     const handleSearch = async (filters) => {
         try {
@@ -34,6 +53,14 @@ const FindScheme = () => {
         <div className="bg-gray-100 min-h-screen">
             <section className="container mx-auto py-12">
                 <h1 className="text-4xl font-bold pt-10 mb-8 text-center">Find Schemes for You</h1>
+                
+                {!isOnline && (
+                    <div className="flex items-center justify-center gap-2 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-8">
+                        <WifiOff size={20} />
+                        <p>You are currently offline. Showing cached schemes.</p>
+                    </div>
+                )}
+
                 <div className="bg-green-100 rounded-lg shadow-md px-6 py-10 mb-8">
                     <SchemeSearch onSearch={handleSearch} />
                 </div>
