@@ -1,59 +1,83 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import Scheme from "../models/scheme.model.js";
-import dotenv from 'dotenv';
-dotenv.config();
+import Schemev2 from "../models/schemev2.model.js";
+import User from "../models/user.model.js";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-export const generateRecommendations = async (userProfile) => {
+export const generateRecommendations = async (userId, options) => {
     try {
-        // If API key is not valid, return basic recommendations
-        if (!process.env.GEMINI_API_KEY) {
-            const schemes = await Scheme.find({
-                'category.gender': userProfile.gender,
-                'category.incomeGroup': userProfile.incomeGroup
-            }).limit(5);
-            return schemes;
+        const userProfile = await User.findById(userId);
+        if (!userProfile) {
+            throw new Error('User not found');
         }
 
-        // Get all schemes
-        const allSchemes = await Scheme.find();
+        // Build the query
+        const query = {
+            $and: [
+                // Match state
+                { state: userProfile.state }
+            ]
+        };
 
-        // Create prompt for Gemini
-        const prompt = `
-        Given a user with the following profile:
-        - Age: ${userProfile.age}
-        - Gender: ${userProfile.gender}
-        - Income Group: ${userProfile.incomeGroup}
-        - Interests: ${userProfile.interests.join(', ')}
+        // Add Category-interests matching if user has interests
+        if (userProfile.interests && userProfile.interests.length > 0) {
+            query.$and.push({
+                Category: {
+                    $elemMatch: {
+                        $in: userProfile.interests
+                    }
+                }
+            });
+        }
 
-        And the following schemes:
-        ${JSON.stringify(allSchemes, null, 2)}
+        // Use proper pagination options
+        const paginationOptions = {
+            page: options.page || 1,
+            limit: options.limit || 9,
+            sort: { createdAt: -1 },
+            lean: true,
+            select: 'schemeName schemeShortTitle state level nodalMinistryName Category tags detailedDescription_md'
+        };
 
-        Please analyze and recommend the top 5 most relevant schemes for this user. 
-        Consider eligibility criteria, benefits, and user's profile.
-        Return only the scheme IDs in an array.
-        `;
+        let recommendations = await Schemev2.paginate(query, paginationOptions);
 
-        // Generate recommendations using Gemini
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const recommendedSchemeIds = JSON.parse(response.text());
+        // If no recommendations found with filters, return random 9 schemes
+        if (!recommendations.docs.length) {
+            console.log('No recommendations found with filters. Returning random 9 schemes...');
+            const randomSchemes = await Schemev2.aggregate([
+                { $sample: { size: 9 } },
+                { 
+                    $project: {
+                        schemeName: 1,
+                        schemeShortTitle: 1,
+                        state: 1,
+                        level: 1,
+                        nodalMinistryName: 1,
+                        Category: 1,
+                        tags: 1,
+                        detailedDescription_md: 1
+                    }
+                }
+            ]);
 
-        // Fetch full scheme details
-        const recommendedSchemes = await Scheme.find({
-            '_id': { $in: recommendedSchemeIds }
-        });
+            return {
+                schemes: randomSchemes,
+                totalPages: 1,
+                currentPage: 1,
+                totalSchemes: 9,
+                hasNextPage: false,
+                hasPrevPage: false
+            };
+        }
 
-        return recommendedSchemes;
+        return {
+            schemes: recommendations.docs,
+            totalPages: recommendations.totalPages,
+            currentPage: recommendations.page,
+            totalSchemes: recommendations.totalDocs,
+            hasNextPage: recommendations.hasNextPage,
+            hasPrevPage: recommendations.hasPrevPage
+        };
+
     } catch (error) {
-        console.error('Error generating recommendations:', error);
-        // Fallback to basic filtering if AI recommendations fail
-        const schemes = await Scheme.find({
-            'category.gender': userProfile.gender,
-            'category.incomeGroup': userProfile.incomeGroup
-        }).limit(5);
-        return schemes;
+        console.error('Error generating recommendations:', error.stack);
+        throw new Error('Could not generate recommendations: ' + error.message);
     }
 };
