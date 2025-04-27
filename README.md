@@ -1,70 +1,131 @@
-# Getting Started with Create React App
+# Scheme Seva - Government Scheme Management Portal
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A comprehensive platform that helps citizens discover, understand, and access government schemes in India.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+### 1. Scheme Discovery
+- Browse through central and state government schemes
+- Advanced filtering system based on:
+  - Income groups (EWS, General, OBC, SC, ST)
+  - Gender categories
+  - State-specific schemes
+  - Age groups
+  - Categories/Tags
 
-### `npm start`
+### 2. AI-Powered Chatbot
+- Interactive chatbot for scheme-related queries
+- Multilingual support (English, Hindi, Punjabi)
+- Context-aware responses about:
+  - Eligibility criteria
+  - Application process
+  - Required documents
+  - Scheme benefits
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### 3. User Management
+- User registration and authentication
+- Personalized profile management
+- Save favorite schemes
+- Track application status
+- Custom recommendations based on user profile
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+### 4. Recommendation System
+- Personalized scheme suggestions based on:
+  - User demographics
+  - Income group
+  - Location
+  - Interests
+  - Previous interactions
 
-### `npm test`
+## Technical Stack
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Frontend
+- React.js
+- Material-UI
+- Tailwind CSS
+- Axios for API integration
+- React Router for navigation
 
-### `npm run build`
+### Backend
+- Node.js with Express
+- MongoDB with Mongoose
+- JWT for authentication
+- Google's Generative AI (Gemini) for chatbot
+- RESTful API architecture
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Setup Instructions
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+1. Clone the repository
+```bash
+git clone https://github.com/9582anupam/scheme-seva
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+2. Frontend Setup
+```bash
+cd Frontend
+npm install
+```
 
-### `npm run eject`
+3. Backend Setup
+```bash
+cd Backend
+npm install
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+4. Environment Variables
+Create .env file in Backend directory with:
+```
+PORT=5000
+MONGODB_URI=your_mongodb_uri
+ACCESS_TOKEN_SECRET=your_access_token_secret
+ACCESS_TOKEN_EXPIRY=your_refresh_token_secret_expiry
+REFRESH_TOKEN_SECRET=your_refresh_token_secret
+REFRESH_TOKEN_EXPIRY=your_access_token_secret_expiry
+GEMINI_API_KEY=your_gemini_api_key
+```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+5. Start Backend Server
+```bash
+npm start
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+5. Start Frontend
+```bash
+npm start
+```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## API Endpoints
 
-## Learn More
+### User Routes
+- POST `/api/v1/users/signup` - User signup
+- POST `/api/v1/users/login` - User login
+- POST `/api/v1/users/logout` - User logout (with JWT verification)
+- GET `/api/v1/users/refresh-access-token` - Refresh access token
+- GET `/api/v1/users/getme` - Get current user details (with JWT verification)
+- POST `/api/v1/users/putdata` - Put data (with JWT verification)
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+  ### Scheme Routes
+- GET `/api/v2/schemes/get-all-schemes` - Get all schemes
+- GET `/api/v2/schemes/get-scheme-by-id/:id` - Get a specific scheme by ID
+- GET `/api/v2/schemes/get-scheme-by-category/:category` - Get schemes by category
+- GET `/api/v2/schemes/get-filtered-schemes` - Get filtered schemes
+- POST `/api/v2/schemes/save-favorite-schemes` - Save favorite schemes (with JWT verification)
+- DELETE `/api/v2/schemes/remove-favorite-schemes/:id` - Remove a favorite scheme by ID (with JWT verification)
+- GET `/api/v2/schemes/get-favorite-schemes` - Get all favorite schemes (with JWT verification)
 
-### Code Splitting
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+### Chatbot Routes
+- POST `/api/v1/chatbot` - Get AI-powered responses
 
-### Analyzing the Bundle Size
+### Recommendation Routes
+- GET `/api/v1/users/personalized` - Get personalized recommendations (with JWT verification)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
 
-### Making a Progressive Web App
+## Contributing
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+Please read CONTRIBUTING.md for details on our code of conduct and the process for submitting pull requests.
 
-### Advanced Configuration
+## License
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+This project is licensed under the MIT License - see the LICENSE.md file for details.
