@@ -7,9 +7,12 @@ import Signup from "./components/pages/auth/Signup";
 import ProtectedRoutes from "./routes/ProtectedRoutes";
 import Unauthenticated from "./routes/Unauthenticated";
 import UserProvider from "./context/UserContext";
-import SchemeDetails from "./components/pages/SchemeDetails/SchemeDetails";
-import FindScheme from "./components/pages/search/FindScheme";
-import Recommendations from "./components/pages/Recommendations/Recommendations";
+import SchemeDetails from "./components/pages/schemeDetails/SchemeDetails";
+import Schemes from "./components/pages/schemes/Schemes";
+import Profile from "./components/pages/profile/Profile";
+import Recommendations from "./components/pages/recommendations/Recommendations";
+import { Toaster } from 'react-hot-toast';
+
 
 function App() {
 
@@ -18,6 +21,7 @@ function App() {
         <BrowserRouter>
             <UserProvider>
                 <div className="App">
+                    <Toaster position="bottom-right" />
 
                     {/* HEADER-NAVBAR-SIDEBAR */}
                     <div className="fixed z-40 w-full">
@@ -39,9 +43,10 @@ function App() {
                     <div className="content-wrapper pt-[5rem]">
                         <Routes>
                             {/* Public Routes - No Auth Needed */}
+
                             <Route path="/" element={<Home />} />
-                            <Route path="/schemes" element={<FindScheme/>}/>
-                            <Route path="/scheme/:id" element={<SchemeDetails />}/>
+                            <Route path="/schemes" element={<Schemes />} />
+                            <Route path="/scheme/:id" element={<SchemeDetails />} />
                             {/* Unauthenticated Routes - Only Accessible When Logged Out */}
                             <Route element={<Unauthenticated />}>
                                 <Route path="/login" element={<Login />} />
@@ -50,7 +55,7 @@ function App() {
 
                             {/* Protected Routes - Only Accessible When Logged In */}
                             <Route element={<ProtectedRoutes />}>
-                                {/* <Route path="/profile" element={<div>Dashboard</div>} /> */}
+                                <Route path="/profile" element={<Profile />} />
                                 <Route path="/recommendations" element={<Recommendations />} />
                             </Route>
 

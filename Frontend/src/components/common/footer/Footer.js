@@ -28,8 +28,8 @@ const Footer = () => {
     const socialMedia = [facebook, x, instagram, youtube];
 
     return (
-        <footer className="flex flex-col font-raleway">
-            <div className="flex bg-[#F3F3F3] justify-center py-8">
+        <footer className="flex flex-col font-raleway ">
+            <div className="flex bg-white justify-center py-8">
                 <div className="flex flex-wrap gap-6 px-6 md:w-11/12 lg:w-10/12 justify-between">
                     <div className="flex flex-col gap-2">
                         {/* <img src={logo} alt="logo" />
@@ -58,7 +58,7 @@ const Footer = () => {
                             <img src={mail} alt="mail" />
                             <p className="font-medium">
                                 <span className="font-bold">Email: </span>
-                                9582anupamk@gmail.com
+                                support@schemeseva.com
                             </p>
                         </div>
                     </div>
@@ -93,7 +93,7 @@ const Footer = () => {
                                 <div key={index}>
                                     <img
                                         src={icon}
-                                        alt={icon.name}
+                                        alt={index}
                                         className="w-8"
                                     />
                                 </div>
@@ -106,17 +106,6 @@ const Footer = () => {
                 <p className="text-white mt-2 font-poppins font-medium text-xl">
                     &copy; 2025 SchemeSeva. All rights reserved.
                 </p>
-                <Link
-                    to="https://www.linkedin.com/in/9582anupam"
-                    className="flex items-center gap-2 mb-2">
-                    <p className="font-mono font-bold text-xl py-1">
-                        <span className="shiny-text text-[#FF0000]">
-                            Developed by @9582anupam
-                        </span>
-                        {/* white color icon */}
-                        <OpenInNewIcon className="w-6 h-6 text-white ml-1 " />
-                    </p>
-                </Link>
             </div>
         </footer>
     );

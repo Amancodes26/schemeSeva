@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, Send, X, Loader2,  } from 'lucide-react';
+import { MessageCircle, Send, X, Loader2, } from 'lucide-react';
 import axios from 'axios';
 
 const translations = {
@@ -135,19 +135,19 @@ const ChatBot = ({ schemeId }) => {
 
     useEffect(() => {
         // Reset messages when language changes
-        setMessages([{ 
-            text: translations[language].welcome, 
-            type: 'bot' 
+        setMessages([{
+            text: translations[language].welcome,
+            type: 'bot'
         }]);
     }, [language]);
 
     const formatResponse = (text) => {
         // Remove asterisks and format sections
         const cleanText = text.replace(/\*\*/g, '');
-        
+
         // Split into sections
         const sections = cleanText.split(/(?=\b(?:Objective|Key Features|Eligibility|How to Apply|Required Documents):)/g);
-        
+
         return sections.map((section, index) => {
             if (section.trim()) {
                 const [title, ...content] = section.split(':');
@@ -188,15 +188,15 @@ const ChatBot = ({ schemeId }) => {
                 }
             );
 
-            setMessages(prev => [...prev, { 
-                text: response.data.response, 
-                type: 'bot' 
+            setMessages(prev => [...prev, {
+                text: response.data.response,
+                type: 'bot'
             }]);
         } catch (error) {
             console.error('Error getting chatbot response:', error);
-            setMessages(prev => [...prev, { 
-                text: translations[language].error, 
-                type: 'bot' 
+            setMessages(prev => [...prev, {
+                text: translations[language].error,
+                type: 'bot'
             }]);
         } finally {
             setIsLoading(false);
@@ -258,11 +258,10 @@ const ChatBot = ({ schemeId }) => {
                         {messages.map((message, index) => (
                             <div
                                 key={index}
-                                className={`p-3 rounded-lg ${
-                                    message.type === 'user'
-                                        ? 'bg-[#74B83E] text-white ml-auto'
-                                        : 'bg-gray-100 mr-auto'
-                                } max-w-[85%]`}
+                                className={`p-3 rounded-lg ${message.type === 'user'
+                                    ? 'bg-[#74B83E] text-white ml-auto'
+                                    : 'bg-gray-100 mr-auto'
+                                    } max-w-[85%]`}
                             >
                                 {message.type === 'bot' ? formatResponse(message.text) : <p>{message.text}</p>}
                             </div>

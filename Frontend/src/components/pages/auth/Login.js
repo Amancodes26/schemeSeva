@@ -14,7 +14,6 @@ import { styled } from "@mui/system";
 import { Link, useNavigate } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import "./auth.css";
-
 import axios from "axios";
 import { UserContext } from "../../../context/UserContext";
 
@@ -89,10 +88,8 @@ const Login = () => {
                 { email, password },
                 { withCredentials: true }
             );
-            console.log("res", response);
             const data = response.data;
             if (data.success) {
-                console.log("User logged in successfully", data.user.accessToken);
                 localStorage.setItem("accessToken", data.user.accessToken);
                 setIsUserLoggedIn(true); // Update login state
                 navigate("/");

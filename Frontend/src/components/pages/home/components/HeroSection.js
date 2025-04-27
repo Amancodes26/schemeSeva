@@ -1,12 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import banner2 from "../../../../assets/banner2.webp";
-// import banner3 from "../../../../assets/banner3.jpg";
+import banner3 from "../../../../assets/banner3.jpg";
 import banner4 from "../../../../assets/banner4.jpg";
 import { useNavigate } from 'react-router-dom';
+
 const HeroSection = () => {
     const navigate = useNavigate();
-    const images = [banner2, banner4 ];
+    const images = [
+        {
+            src: banner2,
+            alt: "Government Schemes Banner 1",
+            priority: true // First image gets high priority
+        },
+        {
+            src: banner3,
+            alt: "Government Schemes Banner 2",
+            priority: false
+        },
+        {
+            src: banner4,
+            alt: "Government Schemes Banner 3",
+            priority: false
+        }
+    ];
     const [currentIndex, setCurrentIndex] = useState(0);
 
     useEffect(() => {
@@ -26,18 +43,22 @@ const HeroSection = () => {
     };
 
     const handleExplore = () => {
-        navigate("/schemes")
-    }
+        navigate("/schemes");
+    };
 
     return (
         <section className="relative h-[calc(100vh-5rem)] overflow-hidden">
-            <div className="absolute inset-0 flex transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${currentIndex * 100}%)` }}>
-                {images.map((src, index) => (
+            <div className="absolute inset-0 flex transition-transform duration-500 ease-in-out" 
+                 style={{ transform: `translateX(-${currentIndex * 100}%)` }}>
+                {images.map((image, index) => (
                     <img
                         key={index}
-                        src={src || "/placeholder.svg"}
-                        alt={`Government Scheme ${index + 1}`}
+                        src={image.src}
+                        alt={image.alt}
                         className="w-full h-full object-cover flex-shrink-0"
+                        loading={image.priority ? "eager" : "lazy"}
+                        fetchpriority={image.priority ? "high" : "auto"}
+                        decoding="async"
                     />
                 ))}
             </div>
@@ -47,23 +68,32 @@ const HeroSection = () => {
                     <p className="text-xl mb-8">
                         Get information about all the government schemes, categorized and easy to explore
                     </p>
-                    <button onClick={handleExplore} className="bg-[#74B83E] text-white px-6 py-3 rounded-full text-lg font-semibold flex items-center hover:bg-[#5d9b2b] transition duration-300">
+                    <button
+                        onClick={handleExplore}
+                        className="bg-[#74B83E] text-white px-6 py-3 rounded-full text-lg font-semibold flex items-center hover:bg-[#5d9b2b] transition duration-300"
+                        aria-label="Explore Government Schemes"
+                    >
                         Explore Schemes
-                        <ChevronRight className="ml-2" />
+                        <ChevronRight className="ml-2" aria-hidden="true" />
                     </button>
                 </div>
             </div>
-            <button onClick={prevSlide} className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-50 p-2 rounded-full
-            hidden sm:block">
-                <ChevronLeft className="text-black" />
+            <button
+                onClick={prevSlide}
+                className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-50 p-2 rounded-full hidden sm:block"
+                aria-label="Previous slide"
+            >
+                <ChevronLeft className="text-black" aria-hidden="true" />
             </button>
-            <button onClick={nextSlide} className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-50 p-2 rounded-full
-            hidden sm:block">
-                <ChevronRight className="text-black" />
+            <button
+                onClick={nextSlide}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-50 p-2 rounded-full hidden sm:block"
+                aria-label="Next slide"
+            >
+                <ChevronRight className="text-black" aria-hidden="true" />
             </button>
         </section>
     );
 };
 
 export default HeroSection;
-
