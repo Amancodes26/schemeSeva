@@ -1,16 +1,33 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { getSchemeById } from "../../../services/schemes/schemeService";
-import { ArrowLeft, Target, List, FileText, Users, Building, Globe, Download, Share2 } from 'lucide-react';
-import { jsPDF } from 'jspdf';  // Import jsPDF
-import ChatBot from '../../common/ChatBot/ChatBot';
+import React, { useState, useEffect, useRef } from "react";
+import { useParams } from "react-router-dom";
+import { getSchemeById, saveFavoriteSchemes, removeFavoriteSchemes, getFavoriteSchemes } from "../../../services/schemes/schemeService";
+import { ArrowLeft, Target, List, FileText, Users, Download, Share2, Bookmark } from 'lucide-react';
+import ChatBot from "../../common/chatbot/ChatBot";
+import { generatePDF } from "../../../helper/generatePdf";
+import { shareScheme } from "../../../helper/shareScheme";
+import DisplayFormatted from "./components/DisplayFormatted";
+import DisplayMarkdown from './components/DisplayMarkdown';
+import { toast } from "react-hot-toast";
 
 const SchemeDetails = () => {
     const { id } = useParams();
-    const navigate = useNavigate();
     const [scheme, setScheme] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const contentRef = useRef(null);
+    const [isSaved, setIsSaved] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [activeTab, setActiveTab] = useState('overview');
+
+    const formatDate = (dateString) => {
+        if (!dateString) return null;
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        });
+    };
 
     useEffect(() => {
         const fetchSchemeDetails = async () => {
@@ -28,192 +45,214 @@ const SchemeDetails = () => {
         fetchSchemeDetails();
     }, [id]);
 
+    useEffect(() => {
+        const checkIfSaved = async () => {
+            try {
+                const savedSchemes = await getFavoriteSchemes();
+                const isSaved = savedSchemes.includes(id);
+                setIsSaved(isSaved);
+            } catch (error) {
+                console.error('Error checking saved status:', error);
+            }
+        };
+
+        if (id) {
+            checkIfSaved();
+        }
+    }, [id]);
+
+    const handleSaveScheme = async () => {
+        if (isSaving) return;
+
+        try {
+            setIsSaving(true);
+            if (isSaved) {
+                await removeFavoriteSchemes(id);
+                toast.success('Removed from favorites');
+            } else {
+                await saveFavoriteSchemes(id);
+                toast.success('Added to favorites');
+            }
+
+            setIsSaved(!isSaved);
+        } catch (error) {
+            console.error('Error managing favorite:', error);
+            toast.error('Please login to save schemes');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     if (loading) return <div className="p-4 text-center">Loading...</div>;
     if (error) return <div className="p-4 text-red-500 text-center">{error}</div>;
     if (!scheme) return <div className="p-4 text-center">Scheme not found</div>;
 
-
-    // pdf generate option
-    const generatePDF = () => {
-        try {
-            const doc = new jsPDF();
-    
-            doc.setFontSize(20);
-            doc.text(scheme.title, 20, 30);
-    
-            doc.setFontSize(16);
-            doc.text("Objective:", 20, 40);
-            doc.setFontSize(12);
-            doc.text(scheme.objective, 20, 50);
-    
-            doc.setFontSize(16);
-            doc.text("Key Features:", 20, 60);
-            scheme.keyFeatures.forEach((feature, index) => {
-                doc.text(`${index + 1}. ${feature}`, 20, 70 + (index * 10));
-            });
-    
-            doc.setFontSize(16);
-            doc.text("How to Apply:", 20, 90);
-            if (scheme.howToApply.online) {
-                doc.setFontSize(12);
-                doc.text("Online:", 20, 100);
-                doc.text(scheme.howToApply.online, 20, 110);
-            }
-            if (scheme.howToApply.offline) {
-                doc.setFontSize(12);
-                doc.text("Offline:", 20, 120);
-                doc.text(scheme.howToApply.offline, 20, 130);
-            }
-    
-            doc.setFontSize(16);
-            doc.text("Required Documents:", 20, 140);
-            scheme.documentsRequired.forEach((docItem, index) => {
-                doc.setFontSize(12);
-                doc.text(`${index + 1}. ${docItem}`, 20, 150 + (index * 10));
-            });
-    
-            doc.setFontSize(16);
-            doc.text("Categories:", 20, 170);
-            scheme.category.incomeGroup.forEach((group, index) => {
-                doc.setFontSize(12);
-                doc.text(group, 20, 180 + (index * 10));
-            });
-    
-            doc.save(`${scheme.title}.pdf`);
-        } catch (error) {
-            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-8" role="alert">
-                <p className="text-red-700">Error generating PDF: {error}</p>
-            </div>
-        }
-    };
-
-    const handleShare = () => {
-        const shareText = `Check out this scheme: ${scheme.title}\n\nLearn more here: ${window.location.href}`;
-        // mutile chize direct share nhi kar sakte that why share text
-        if (navigator.share) {
-            navigator.share({
-                text: shareText,
-            })
-            .then(() => console.log("Shared successfully"))
-            .catch((error) => console.log("Sharing failed", error));
-        } else {
-            navigator.clipboard.writeText(window.location.href).then(() => {
-                alert("Scheme URL copied to clipboard!");
-            }).catch((error) => {
-                console.error("Failed to copy URL: ", error);
-                alert("Failed to copy URL to clipboard.");
-            });
-        }
-    };
-    
+    const tabs = [
+        { id: 'overview', label: 'Overview', icon: Target },
+        { id: 'eligibility', label: 'Eligibility', icon: Users },
+        { id: 'benefits', label: 'Benefits', icon: List },
+        { id: 'documents', label: 'Documents', icon: FileText },
+        { id: 'apply', label: 'Apply', icon: FileText },
+        { id: 'faq', label: 'FAQ', icon: List },
+    ];
 
     return (
-        <div className="max-w-4xl mx-auto p-6">
-            <button 
-                onClick={() => navigate(-1)}
-                className="mb-6 px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 flex items-center"
-            >
-                <ArrowLeft className="mr-2" size={20} />
-                Back
-            </button>
+        <div className="min-h-screen bg-gray-50">
+            <div className="max-w-4xl mx-auto p-6">
+                <button
+                    onClick={() => window.history.back()}
+                    className="mb-8 px-4 py-2 text-gray-700 bg-white rounded-lg hover:bg-gray-50 flex items-center shadow-sm transition-all duration-200 group"
+                >
+                    <ArrowLeft className="mr-2 group-hover:-translate-x-1 transition-transform duration-200" size={20} />
+                    Back
+                </button>
 
-            <div className="bg-white rounded-lg shadow-lg p-6">
-                <h1 className="text-3xl font-bold mb-4 text-[#74B83E]">{scheme.title}</h1>
-                
-                <section className="mb-6">
-                    <h2 className="text-xl font-semibold mb-2 flex items-center">
-                        <Target className="mr-2" size={24} />
-                        Objective
-                    </h2>
-                    <p className="text-gray-700">{scheme.objective}</p>
-                </section>
+                <div ref={contentRef} className="bg-white rounded-2xl shadow-lg p-8 space-y-8">
+                    {/* Header Section */}
+                    <header className="border-b border-gray-100 pb-6">
+                        <h1 className="text-4xl font-bold mb-3 text-gray-900">{scheme?.schemeName}</h1>
+                        {scheme?.schemeShortTitle && (
+                            <p className="text-gray-500 text-lg">({scheme.schemeShortTitle})</p>
+                        )}
 
-                <section className="mb-6">
-                    <h2 className="text-xl font-semibold mb-2 flex items-center">
-                        <List className="mr-2" size={24} />
-                        Key Features
-                    </h2>
-                    <ul className="list-disc pl-5">
-                        {scheme.keyFeatures.map((feature, index) => (
-                            <li key={index} className="text-gray-700 mb-1">{feature}</li>
-                        ))}
-                    </ul>
-                </section>
-
-                <section className="mb-6">
-                    <h2 className="text-xl font-semibold mb-2 flex items-center">
-                        <FileText className="mr-2" size={24} />
-                        How to Apply
-                    </h2>
-                    {scheme.howToApply.online && (
-                        <div className="mb-2">
-                            <h3 className="font-medium">Online:</h3>
-                            <p className="text-gray-700">{scheme.howToApply.online}</p>
-                        </div>
-                    )}
-                    {scheme.howToApply.offline && (
-                        <div>
-                            <h3 className="font-medium">Offline:</h3>
-                            <p className="text-gray-700">{scheme.howToApply.offline}</p>
-                        </div>
-                    )}
-                </section>
-
-                <section className="mb-6">
-                    <h2 className="text-xl font-semibold mb-2 flex items-center">
-                        <FileText className="mr-2" size={24} />
-                        Required Documents
-                    </h2>
-                    <ul className="list-disc pl-5">
-                        {scheme.documentsRequired.map((doc, index) => (
-                            <li key={index} className="text-gray-700 mb-1">{doc}</li>
-                        ))}
-                    </ul>
-                </section>
-
-                <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <h2 className="text-xl font-semibold mb-2 flex items-center">
-                            <Users className="mr-2" size={24} />
-                            Categories
-                        </h2>
-                        <div className="flex flex-wrap gap-2">
-                            {scheme.category.incomeGroup.map((group, index) => (
-                                <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full">
-                                    {group}
+                        {/* Tags */}
+                        <div className="mt-4 flex flex-wrap gap-2">
+                            {scheme?.tags?.map((tag, index) => (
+                                <span
+                                    key={index}
+                                    className="px-4 py-1.5 bg-green-50 text-[#74B83E] rounded-full text-sm font-medium"
+                                >
+                                    {tag}
                                 </span>
                             ))}
                         </div>
-                    </div>
-                    <div>
-                        <h2 className="text-xl font-semibold mb-2 flex items-center">
-                            <Building className="mr-2" size={24} />
-                            Additional Info
-                        </h2>
-                        <p className="text-gray-700">Ministry: {scheme.ministry}</p>
-                        <p className="text-gray-700">Level: {scheme.level}</p>
-                    </div>
-                </section>
 
-                <div className="mt-8 flex flex-wrap gap-4">
-                    <a href={scheme.howToApply.online} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-[#74B83E] text-white rounded-md hover:bg-[#629a33] flex items-center">
-                        <Globe className="mr-2" size={20} />
-                        Apply Online
-                    </a>
-                    <button 
-                        onClick={generatePDF} //call jayegi
-                        className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center"
-                    >
-                        <Download className="mr-2" size={20} />
-                        Download PDF
-                    </button>
-                    <button onClick={handleShare} className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 flex items-center">
-                        <Share2 className="mr-2" size={20} />
-                        Share
-                    </button>
+                        {/* Important Details */}
+                        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 rounded-xl p-4">
+                            {scheme?.nodalMinistryName && (
+                                <p className="text-gray-600">Ministry: <span className="font-medium text-gray-900">{scheme.nodalMinistryName}</span></p>
+                            )}
+                            {scheme?.state && (
+                                <p className="text-gray-600">State: <span className="font-medium text-gray-900">{scheme.state}</span></p>
+                            )}
+                            {scheme?.level && (
+                                <p className="text-gray-600">Level: <span className="font-medium text-gray-900">{scheme.level}</span></p>
+                            )}
+                            {scheme?.openDate && (
+                                <p className="text-gray-600">Open Date: <span className="font-medium text-gray-900">{formatDate(scheme.openDate)}</span></p>
+                            )}
+                            {scheme?.closeDate && (
+                                <p className="text-gray-600">Close Date: <span className="font-medium text-gray-900">{formatDate(scheme.closeDate)}</span></p>
+                            )}
+                        </div>
+                    </header>
+
+                    {/* Tab Navigation */}
+                    <div className="border-b border-gray-200">
+                        <nav className="-mb-px flex space-x-8 overflow-x-auto">
+                            {tabs.map((tab) => {
+                                const Icon = tab.icon;
+                                return (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setActiveTab(tab.id)}
+                                        className={`
+                                            flex items-center pb-4 px-1 border-b-2 font-medium text-sm
+                                            ${activeTab === tab.id
+                                                ? 'border-[#74B83E] text-[#74B83E]'
+                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                            }
+                                        `}
+                                    >
+                                        <Icon className="mr-2" size={20} />
+                                        {tab.label}
+                                    </button>
+                                );
+                            })}
+                        </nav>
+                    </div>
+
+                    {/* Tab Content */}
+                    <div className="py-4">
+                        {activeTab === 'overview' && (
+                            <DisplayMarkdown content={scheme?.detailedDescription_md} />
+                        )}
+
+                        {activeTab === 'eligibility' && (
+                            <DisplayMarkdown content={scheme?.eligibilityDescription_md} />
+                        )}
+
+                        {activeTab === 'benefits' && (
+                            <div className="bg-gray-50 rounded-xl p-6">
+                                <DisplayFormatted benefitsData={scheme?.benefits} />
+                            </div>
+                        )}
+
+                        {activeTab === 'documents' && (
+                            <div className="bg-gray-50 rounded-xl p-6">
+                                <DisplayFormatted benefitsData={scheme?.documents_required} />
+                            </div>
+                        )}
+
+                        {activeTab === 'apply' && (
+                            <div className="space-y-4">
+                                {scheme?.applicationProcess?.map((process, index) => (
+                                    <div key={index} className="bg-gray-50 rounded-xl p-6">
+                                        <h3 className="font-semibold text-gray-800 mb-3">{process?.mode}:</h3>
+                                        <DisplayFormatted benefitsData={process?.process} />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {activeTab === 'faq' && scheme?.faqs?.length > 0 && (
+                            <div className="space-y-4">
+                                {scheme.faqs.map((faq, index) => (
+                                    <div key={index} className="bg-gray-50 rounded-xl p-6">
+                                        <h3 className="font-semibold text-gray-900 mb-2">{faq.question}</h3>
+                                        <p className="text-gray-600">{faq.answer}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-wrap gap-4 pt-6 border-t border-gray-100">
+                        <button
+                            onClick={handleSaveScheme}
+                            disabled={isSaving}
+                            className={`px-6 py-3 text-white rounded-lg flex items-center gap-2 transition-colors duration-200 shadow-sm ${isSaving ? 'opacity-50 cursor-not-allowed' : ''
+                                } ${isSaved
+                                    ? 'bg-[#74B83E] hover:bg-[#629a33]'
+                                    : 'bg-gray-600 hover:bg-gray-700'
+                                }`}
+                        >
+                            <Bookmark
+                                className={`${isSaved ? 'fill-white' : ''} ${isSaving ? 'animate-pulse' : ''}`}
+                                size={20}
+                            />
+                            {isSaving ? 'Processing...' : isSaved ? 'Saved' : 'Save'}
+                        </button>
+                        <button
+                            onClick={() => generatePDF(contentRef, scheme?.schemeName)}
+                            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors duration-200 shadow-sm"
+                        >
+                            <Download size={20} />
+                            Download PDF
+                        </button>
+                        <button
+                            onClick={() => shareScheme(scheme?.schemeName)}
+                            className="px-6 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-800 flex items-center gap-2 transition-colors duration-200 shadow-sm"
+                        >
+                            <Share2 size={20} />
+                            Share
+                        </button>
+                    </div>
                 </div>
+
+                {scheme && <ChatBot schemeId={scheme?._id} />}
             </div>
-            {scheme && <ChatBot schemeId={scheme._id} />}
         </div>
     );
 };

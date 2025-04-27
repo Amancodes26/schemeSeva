@@ -1,92 +1,95 @@
-import { saveSchemes, getStoredSchemes } from '../../utils/indexedDB';
+import axios from "axios";
+import userAuthenticatedAxiosInstance from "../users/userAuthenticatedAxiosInstance";
+// const BACKEND_URL = `${process.env.REACT_APP_BACKEND_URL}/api/v1/schemes`;
+const BACKEND_URLV2 = `${process.env.REACT_APP_BACKEND_URL}/api/v2/schemes`;
+const userAxiosInstance = userAuthenticatedAxiosInstance('/api/v2/schemes');
 
-const BACKEND_URL = `${process.env.REACT_APP_BACKEND_URL}/api/v1/schemes`;
+// Create axios instance with default config
+const api = axios.create({
+    baseURL: BACKEND_URLV2,
+    withCredentials: true,
+    headers: {
+        'Content-Type': 'application/json'
+    }
+});
 
-export const getFilteredSchemes = async (filters) => {
+export const getFilteredSchemes = async (filters, page = 1, limit = 9) => {
     try {
-        const queryParams = new URLSearchParams();
-        
-        // Add filters to query params
-        if (filters.tags) queryParams.append('tags', filters.tags);
-        if (filters.gender) queryParams.append('gender', filters.gender);
-        if (filters.age) queryParams.append('age', filters.age);
-        if (filters.incomeGroup) queryParams.append('incomeGroup', filters.incomeGroup);
-        if (filters.state) queryParams.append('state', filters.state);
+        const params = {
+            page,
+            limit,
+            ...(filters.search && { search: filters.search }),
+            ...(filters.schemeName && { schemeName: filters.schemeName }),
+            ...(filters.openDate && { openDate: filters.openDate }),
+            ...(filters.closeDate && { closeDate: filters.closeDate }),
+            ...(filters.state && { state: filters.state }),
+            ...(filters.nodalMinistryName && { nodalMinistryName: filters.nodalMinistryName }),
+            ...(filters.level && { level: filters.level }),
+            ...(filters.category && { category: filters.category }),
+            ...(filters.gender && { gender: filters.gender }),
+            ...(filters.incomeGroup && { incomeGroup: filters.incomeGroup })
+        };
 
-        // Try to fetch from network first
-        try {
-            const response = await fetch(`${BACKEND_URL}/get-scheme-filtered?${queryParams}`);
-            if (!response.ok) throw new Error('Network response was not ok');
-            const data = await response.json();
-            
-            // Store the fetched data in IndexedDB
-            await saveSchemes(data);
-            return data;
-        } catch (networkError) {
-            console.log('Network error, falling back to cached data:', networkError);
-            
-            // If network request fails, get data from IndexedDB
-            const cachedSchemes = await getStoredSchemes();
-            
-            // Apply filters to cached schemes
-            return filterCachedSchemes(cachedSchemes, filters);
-        }
+        const { data } = await api.get('/get-filtered-schemes', { params });
+        return {
+            schemes: data.schemes,
+            totalPages: data.totalPages,
+            currentPage: data.currentPage,
+            totalSchemes: data.totalSchemes
+        };
     } catch (error) {
-        throw error;
+        throw error.response?.data || error.message;
+    }
+};
+
+export const getAllSchemes = async (page = 1, limit = 9) => {
+    try {
+        const { data } = await api.get('/get-all-schemes', {
+            params: { page, limit }
+        });
+        return {
+            schemes: data.schemes,
+            totalPages: data.totalPages,
+            currentPage: data.currentPage,
+            totalSchemes: data.totalSchemes
+        };
+    } catch (error) {
+        throw error.response?.data || error.message;
     }
 };
 
 export const getSchemeById = async (id) => {
     try {
-        // Try to fetch from network first
-        try {
-            const response = await fetch(`${BACKEND_URL}/get-scheme-by-id/${id}`);
-            if (!response.ok) throw new Error('Network response was not ok');
-            return await response.json();
-        } catch (networkError) {
-            console.log('Network error, falling back to cached data:', networkError);
-            
-            // If network request fails, get data from IndexedDB
-            const cachedSchemes = await getStoredSchemes();
-            return cachedSchemes.find(scheme => scheme._id === id);
-        }
+        const { data } = await api.get(`/get-scheme-by-id/${id}`);
+        return data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
+export const saveFavoriteSchemes = async (schemeId) => {
+    try {
+        const response = await userAxiosInstance.post('/save-favorite-schemes', { schemeId });
+        return response.data;
     } catch (error) {
         throw error;
     }
 };
 
-// Helper function to filter cached schemes
-const filterCachedSchemes = (schemes, filters) => {
-    return schemes.filter(scheme => {
-        let matches = true;
-        
-        if (filters.tags) {
-            matches = matches && scheme.tags.includes(filters.tags);
-        }
-        if (filters.gender) {
-            matches = matches && scheme.category.gender.includes(filters.gender);
-        }
-        if (filters.incomeGroup) {
-            matches = matches && scheme.category.incomeGroup.includes(filters.incomeGroup);
-        }
-        if (filters.state) {
-            matches = matches && (scheme.state.includes(filters.state) || scheme.state.includes('all'));
-        }
-        
-        return matches;
-    });
+export const removeFavoriteSchemes = async (schemeId) => {
+    try {
+        const response = await userAxiosInstance.delete(`/remove-favorite-schemes/${schemeId}`);
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
 };
 
-// New function to sync schemes with server
-export const syncSchemes = async () => {
+export const getFavoriteSchemes = async () => {
     try {
-        const response = await fetch(`${BACKEND_URL}/get-scheme-filtered`);
-        if (!response.ok) throw new Error('Network response was not ok');
-        const schemes = await response.json();
-        await saveSchemes(schemes);
-        return true;
+        const response = await userAxiosInstance.get('/get-favorite-schemes');
+        return response.data;
     } catch (error) {
-        console.error('Failed to sync schemes:', error);
-        return false;
+        throw error;
     }
 };
