@@ -1,25 +1,30 @@
 import { generateRecommendations } from "../services/recommendation.service.js";
-import User from "../models/user.model.js";
 
 export const getPersonalizedRecommendations = async (req, res) => {
     try {
         const userId = req.user._id;
-        const user = await User.findById(userId);
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 9;
 
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
+        const options = {
+            page,
+            limit,
+            sort: { createdAt: -1 }
+        };
 
-        const recommendations = await generateRecommendations({
-            age: user.age,
-            gender: user.gender,
-            incomeGroup: user.incomeGroup,
-            interests: user.interests
+        const recommendations = await generateRecommendations(userId, options);
+
+        res.status(200).json({
+            success: true,
+            data: recommendations,
+            message: 'Recommendations fetched successfully'
         });
-
-        res.status(200).json(recommendations);
     } catch (error) {
         console.error('Error getting recommendations:', error);
-        res.status(500).json({ message: 'Error getting recommendations' });
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error getting recommendations',
+            error: error.message 
+        });
     }
 };

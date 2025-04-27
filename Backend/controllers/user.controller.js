@@ -5,19 +5,20 @@ import jwt from "jsonwebtoken";
 // signup a new user
 const signUp = async (req, res) => {
     try {
-        const { name, email, password, age, gender, incomeGroup, interests } = req.body;
+        // Destructure the user's data from the request body
+        const { name, email, password } = req.body;
 
-        // Check if all required fields are provided
-        if (!name || !email || !password || !age || !gender || !incomeGroup) {
+        // Check if all fields are provided
+        if (!name || !email || !password) {
             return res.status(400).json({
-                message: "All fields (name, email, password, age, gender, incomeGroup) are required",
+                message: "All fields are required",
                 status: 400,
                 success: false,
             });
         }
 
         // Check if the user already exists
-        const userExist = await User.findOne({ email });
+        const userExist = await User.findOne({ email: email });
         if (userExist) {
             return res.status(400).json({
                 message: "User already exists",
@@ -26,22 +27,33 @@ const signUp = async (req, res) => {
             });
         }
 
-        // Create a new user with all required fields
-        const newUser = new User({
-            name,
-            email,
-            password,
-            age: parseInt(age),
-            gender,
-            incomeGroup,
-            interests: interests || ['education'] // Default interest if none provided
-        });
+        // Check for minimum password length
+        if (password.length < 6) {
+            return res.status(400).json({
+                message: "Password must be at least 8 characters long",
+                status: 400,
+                success: false,
+            });
+        }
 
+        // Apply email regex
+        const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({
+                message: "Invalid email format",
+                status: 400,
+                success: false,
+            });
+        }
+
+        // Create a new user
+        const newUser = new User({ name, email, password });
         await newUser.save();
 
-        // fetch user information without sensitive data
+        // fetch user information
         const user = await User.findById(newUser._id).select("-password");
 
+        // Send back the created user's information
         return res.status(201).json({
             message: "User registered successfully",
             user,
@@ -51,7 +63,8 @@ const signUp = async (req, res) => {
     } catch (error) {
         console.error("error while registering a user", error);
         return res.status(500).json({
-            message: error.message || "Error while registering a user",
+            message: "Error while registering a user",
+            error: error.message,
             status: 500,
             success: false,
         });
@@ -106,16 +119,18 @@ const login = async (req, res) => {
         userDetails = { ...userDetails.toObject(), accessToken };
 
         // sending accessToken and refreshToken as cookies
-        const option = {
-            httpOnly: true,
-            secure: true,
+        const options = {
+            httpOnly: true,  // Cannot be accessed via JavaScript (only sent with HTTP requests)
+            secure: process.env.NODE_ENV === 'production', // Set to true only in production (for HTTPS)
+            sameSite: 'None', // Allows cross-origin cookie transmission (important for cross-origin requests)
         };
+
 
         // Send back the user's information
         return res
             .status(200)
-            .cookie("accessToken", accessToken)
-            .cookie("refreshToken", refreshToken)
+            .cookie("accessToken", accessToken, options)
+            .cookie("refreshToken", refreshToken, options)
             .json({
                 message: "User logged in successfully",
                 user: userDetails,
@@ -172,8 +187,9 @@ const refreshAccessToken = async (req, res) => {
         }
 
         const options = {
-            httpOnly: true,
-            secure: true,
+            httpOnly: true,  // Cannot be accessed via JavaScript (only sent with HTTP requests)
+            secure: process.env.NODE_ENV === 'production', // Set to true only in production (for HTTPS)
+            sameSite: 'None', // Allows cross-origin cookie transmission (important for cross-origin requests)
         };
 
         const { accessToken, newRefreshToken } =
@@ -220,8 +236,9 @@ const logout = async (req, res) => {
         );
 
         const options = {
-            httpOnly: true,
-            secure: true,
+            httpOnly: true,  // Cannot be accessed via JavaScript (only sent with HTTP requests)
+            secure: process.env.NODE_ENV === 'production', // Set to true only in production (for HTTPS)
+            sameSite: 'None', // Allows cross-origin cookie transmission (important for cross-origin requests)
         };
         return res
             .status(200)
@@ -242,4 +259,131 @@ const logout = async (req, res) => {
     }
 };
 
-export { signUp, login, refreshAccessToken, logout };
+
+const getMe = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const user = await User.findById(userId).select("-password -refreshToken");
+        return res.status(200).json({
+            status: 200,
+            data: user,
+            message: "User details fetched successfully",
+            success: true,
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            message: "Internal server error",
+            error: error.message,
+            status: 500,
+            success: false,
+        });
+    }
+};
+
+/*
+const userSchema = new mongoose.Schema(
+    {
+        name: {
+            type: String,
+            required: true
+        },
+        email: {
+            type: String,
+            required: true,
+            unique: true,
+            // Email validation pattern: matches a standard email format
+            match: new RegExp(/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/),
+        },
+        password: {
+            type: String,
+            required: true,
+            minlength: 6,
+        },
+        phoneNumber: {
+            type: String,
+        },
+        role: {
+            type: String,
+            enum: ["USER", "ADMIN"],
+            default: "USER",
+            required: true,
+        },
+
+        refreshToken: {
+            type: String, // The refresh token itself
+            default: null,
+        },
+
+        // array of strings
+        interests: {
+            type: [String],
+        },
+
+        incomeGroup: {
+            type: String,
+            enum: ['EWS', 'General', 'OBC', 'SC', 'ST'],
+
+        },
+
+        state: {
+            type: String,
+        },
+
+        age: {
+            type: Number,
+        },
+
+        favorites: {
+            type: [mongoose.Schema.Types.ObjectId],
+            ref: 'Scheme',
+        },
+
+        gender: {
+            type: String,
+            enum: ['male', 'female', 'other'],
+        },
+
+        role: {
+            type: String,
+            enum: ["USER", "ADMIN"],
+            default: "USER",
+            required: true,
+        },
+
+
+    },
+
+    { timestamps: true }
+);
+*/
+
+const putData = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const user = await User.findByIdAndUpdate(
+            userId,
+            req.body,
+            {
+                new: true,
+            }
+        );
+        return res.status(200).json({
+            status: 200,
+            data: user,
+            message: "User details updated successfully",
+            success: true,
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            message: "Internal server error",
+            error: error.message,
+            status: 500,
+            success: false,
+        });
+    }
+};
+
+
+export { signUp, login, refreshAccessToken, logout, getMe, putData };
