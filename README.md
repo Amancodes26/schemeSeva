@@ -57,7 +57,7 @@ A comprehensive platform that helps citizens discover, understand, and access go
 
 1. Clone the repository
 ```bash
-git clone https://github.com/Amancodes26/schemeSeva.git
+git clone https://github.com/amancodes26/scheme-seva
 ```
 
 2. Frontend Setup
